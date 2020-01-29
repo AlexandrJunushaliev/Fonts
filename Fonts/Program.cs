@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -8,40 +9,38 @@ using HtmlAgilityPack;
 
 namespace Fonts
 {
+    
     class Program
     {
-        static void AppendToSbs(StringBuilder readonlyStringBuilder, StringBuilder enumStringBuilder,
+        static void AppendToSbs(StringBuilder enumStringBuilder,
             StringBuilder switchCaseStringBuilder,
-            string htmlClass, string style = "")
+            string htmlClass, string style = null)
         {
             var name = htmlClass.Split(" ");
             var firstPartNameWords = name[1].Remove(0, 3).Split("-");
             var nameWords = new List<string>(firstPartNameWords);
 
-            if (style != "")
+            if (style != null)
             {
                 nameWords.Add(style);
             }
 
             var className = string.Concat(nameWords.Select(x => x[0].ToString().ToUpper() + x.Remove(0, 1)));
             className = char.IsDigit(className[0]) ? "_" + className : className;
-            enumStringBuilder.Append($"\t{className},\n");
+            enumStringBuilder.Append($"\t{className},{Environment.NewLine}");
             switchCaseStringBuilder.Append(
-                $"\tcase StdIconic.{className}:\n\t\treturn \"{htmlClass}\";\n");
-            readonlyStringBuilder.Append(
-                $"\tpublic static readonly Iconic {className} = new Iconic(StdIconic.{className});\n");
+                $"\tcase StdIcon.{className}:{Environment.NewLine}\t\treturn \"{htmlClass}\";{Environment.NewLine}");
         }
 
         static void Main(string[] args)
         {
             //суть та же самая осталасть
             var classStylePairs = new Dictionary<string, List<string>>();
-            var readonlyStringBuilder = new StringBuilder();
-            var enumStringBuilder = new StringBuilder("public enum StdIconic\n{\n\tNone,\r");
-            var switchCaseStringBuilder = new StringBuilder("switch(value)\n{\n");
+            var enumStringBuilder = new StringBuilder($"public enum StdIcon{Environment.NewLine}{{{Environment.NewLine}\tNone,{Environment.NewLine}");
+            var switchCaseStringBuilder = new StringBuilder($"switch(value){Environment.NewLine}{{{Environment.NewLine}");
             //пришлось загружать файл, так как на сайте постзагрузка (видимо что-то на реактивке)
             //поэтому загружает только самую раннюю версию, на которой нет иконок
-            var path = @"LocationOfDownloadedHtml\Free Icons _ Font Awesome.html";
+            var path = @"LocationOfYourFile\Free Icons _ Font Awesome.html";
             //загрузка документа и пробег по нодам
             var document = new HtmlDocument();
             document.Load(path);
@@ -68,41 +67,36 @@ namespace Fonts
                     {
                         if (style == "far")
                         {
-                            AppendToSbs(readonlyStringBuilder, enumStringBuilder, switchCaseStringBuilder,
+                            AppendToSbs(enumStringBuilder, switchCaseStringBuilder,
                                 string.Concat(style, " ", htmlClassWithoutStyle));
                         }
                         else
                         {
                             //Brand выглядит как Solid, поэтому, в принципе, взаимозаменяемы в виде Bold
-                            AppendToSbs(readonlyStringBuilder, enumStringBuilder, switchCaseStringBuilder,
+                            AppendToSbs(enumStringBuilder, switchCaseStringBuilder,
                                 string.Concat(style, " ", htmlClassWithoutStyle), "Bold");
                         }
                     }
                 }
                 else
                 {
-                    AppendToSbs(readonlyStringBuilder, enumStringBuilder, switchCaseStringBuilder,
+                    AppendToSbs(enumStringBuilder, switchCaseStringBuilder,
                         string.Concat(styles[0], " ", htmlClassWithoutStyle));
                 }
             }
 
             enumStringBuilder.Remove(enumStringBuilder.Length - 2, 1).Append("}");
             switchCaseStringBuilder.Append(
-                "\tdefault:\n\t\tthrow new ArgumentOutOfRangeException(new Guid(\"73FE4B0B-B8DD-48A7-ACD4-61AF4A926FBA\").ToString());\n}");
-            readonlyStringBuilder.Remove(readonlyStringBuilder.Length - 2, 1);
+                $"\tdefault:{Environment.NewLine}\t\tthrow new ArgumentOutOfRangeException(new Guid(\"73FE4B0B-B8DD-48A7-ACD4-61AF4A926FBA\").ToString());{Environment.NewLine}}}");
             Console.WriteLine(enumStringBuilder);
             Console.WriteLine(switchCaseStringBuilder);
-            Console.WriteLine(readonlyStringBuilder);
 
             //вывод в файл
-            /*using (StreamWriter sw = new StreamWriter("E:\\hw.txt", false, System.Text.Encoding.Default))
+            using (StreamWriter sw = new StreamWriter("E:\\hw.txt", false, System.Text.Encoding.Default))
             {
                 sw.WriteLine(enumStringBuilder);
-                sw.WriteLine("==================");
-                sw.WriteLine(readonlyStringBuilder);
-                sw.WriteLine("==================");
                 sw.WriteLine(switchCaseStringBuilder);
-            }*/
+            }
         }
     }
 }
